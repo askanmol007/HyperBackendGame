@@ -4,13 +4,13 @@ dotenv.config({ path: "./config.env" });
 
 // Set up the MongoDB connection string
 
-// const DB = process.env.DATABASE.replace(
-//   "<PASSWORD>",
-//   process.env.DATABASE_PASSWORD
-// );
+const DB = process.env.DATABASE.replace(
+  "<PASSWORD>",
+  process.env.DATABASE_PASSWORD
+);
 
 mongoose
-  .connect("mongodb://localhost/TestHyperMoveGame", {
+  .connect(DB, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
