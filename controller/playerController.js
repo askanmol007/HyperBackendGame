@@ -59,41 +59,88 @@ exports.SaveWalletAddress = async (req, res) => {
 };
 
 // Endpoint for tracking Five Matches
-exports.TrackFiveMatches = async (req, res) => {
-  const { userId, walletAddress } = req.body;
-  // Validate that userId and walletAddress are both provided
-  if (!userId || !walletAddress) {
-    return res.status(403).json({ message: "userId or walletAddress missing" });
-  }
-  try {
-    // Find the existing game stats document for the user
-    const PlayersData = await PlayersData.findOne({ walletAddress });
+// exports.TrackFiveMatches = async (req, res) => {
+//   try {
+//     const { userId, walletAddress } = req.body;
+//     console.log(req.body);
+//     // Validate that userId and walletAddress are both provided
+//     if (!userId || !walletAddress) {
+//       res.status(403).json({ message: "userId or walletAddress missing" });
+//     }
+//     // Find the existing game stats document for the user
+//     const PlayersData = await PlayersData.findOne({ walletAddress });
+//     console.log(PlayersData);
 
-    // If the user has no existing game stats document, return an error response
-    if (!PlayersData) {
-      res.status(404).json({ message: "Wallet not found" });
-    }
-    PlayersData.matchCount += 1;
-    await PlayersData.save();
-    if (PlayersData.matchCount >= 5 && !PlayersData.fiveMatchesCompleted) {
-      PlayersData.fiveMatchesCompleted = true;
-      PlayersData.numCoins += 200;
-      await PlayersData.save();
-      res.status(200).json({
-        message: "Five matches completed and rewarded with 200 coins",
-        numCoins: 200,
-        fiveMatchesCompleted: true,
-      });
+//     // If the user has no existing game stats document, return an error response
+//     if (!PlayersData) {
+//       res.status(404).json({ message: "Wallet not found" });
+//     }
+//     PlayersData.matchCount += 1;
+//     await PlayersData.save();
+//     if (PlayersData.matchCount >= 5 && !PlayersData.fiveMatchesCompleted) {
+//       PlayersData.fiveMatchesCompleted = true;
+//       PlayersData.numCoins += 200;
+//       await PlayersData.save();
+//       res.status(200).json({
+//         message: "Five matches completed and rewarded with 200 coins",
+//         numCoins: 200,
+//         fiveMatchesCompleted: true,
+//       });
+//     }
+
+//     // If neither condition is met, send a 403 error response
+//     res.status(403).json({
+//       message:
+//         "Complete at least 5 matches or play for at least 60 minutes to receive rewards.",
+//     });
+//   } catch (err) {
+//     console.log(err);
+//     return res.status(500).json({ message: "Internal server error" });
+//   }
+// };
+
+exports.TrackFiveMatches = async (req, res) => {
+  try {
+    const { userId, walletAddress } = req.body;
+    console.log(req.body);
+    // Validate that userId and walletAddress are both provided
+    if (!userId || !walletAddress) {
+      return res
+        .status(403)
+        .json({ message: "userId or walletAddress missing" });
+    } else {
+      // Find the existing game stats document for the user
+      const data = await PlayersData.findOne({ walletAddress });
+      console.log(data);
+
+      // If the user has no existing game stats document, return an error response
+      if (!data) {
+        return res.status(404).json({ message: "Wallet not found" });
+      } else {
+        data.matchCount += 1;
+        await data.save();
+        if (data.matchCount >= 5) {
+          data.fiveMatchesCompleted = true;
+          data.numCoins += 200;
+          await data.save();
+          return res.status(200).json({
+            message: "Five matches completed and rewarded with 200 coins",
+            numCoins: 200,
+            fiveMatchesCompleted: true,
+          });
+        } else {
+          return res.status(403).json({
+            message:
+              "Complete at least 5 matches or play for at least 60 minutes to receive rewards.",
+          });
+        }
+      }
     }
 
     // If neither condition is met, send a 403 error response
-    res.status(403).json({
-      message:
-        "Complete at least 5 matches or play for at least 60 minutes to receive rewards.",
-    });
   } catch (err) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
+    console.log(err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
