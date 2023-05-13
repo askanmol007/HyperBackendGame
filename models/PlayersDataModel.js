@@ -61,6 +61,22 @@ const gameStatsSchema = new mongoose.Schema({
     type: Date,
     default: new Date(),
   },
+  headshotClaimStatus: {
+    type: Boolean,
+    default: false,
+  },
+  totalKillClaimStatus: {
+    type: Boolean,
+    default: false,
+  },
+  totalTimeClaimStatus: {
+    type: Boolean,
+    default: false,
+  },
+  rewardDate: {
+    type: Date,
+    default: new Date(),
+  },
 });
 // Create a model for the GameStats collection
 const PlayersData = mongoose.model("PlayersData", gameStatsSchema);

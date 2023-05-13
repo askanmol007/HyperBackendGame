@@ -34,4 +34,9 @@ router.route("/UpdateData").get(playerController.UpdateData);
 //ROUTER TO DELETE ALL PLAYER DATA
 router.route("/DeleteAllPlayer").delete(playerController.DeleteAllPlayer);
 
+//ROUTER TO GET REWARD LIST DATA
+router.route("/today-reward").post(playerController.RewardListData);
+
+router.route("/update-reward-status").post(playerController.updateRewardStatus);
+
 module.exports = router;

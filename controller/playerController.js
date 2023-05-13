@@ -1,4 +1,5 @@
 const PlayersData = require("./../models/PlayersDataModel");
+const moment = require("moment");
 
 function sameDay(d1, d2) {
   if (!d1 || !d2) {
@@ -18,17 +19,39 @@ function sameDay(d1, d2) {
 exports.SaveWalletAddress = async (req, res) => {
   try {
     const { userId, walletAddress } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        status: "failed",
+        message: "Please provide  User ID",
+      });
+    }
+
+    // User Exist or Not
     const existingUser = await PlayersData.findOne({ userId });
-    const existingWallet = await PlayersData.findOne({ walletAddress });
-    if (existingUser || existingWallet) {
-      res.status(202).json({
-        message: "User/Wallet already exists",
-        walletAddress: walletAddress,
+
+    if (existingUser) {
+      return res.status(200).json({
+        message: "Wallet Address Found",
+        walletAddress: existingUser.walletAddress,
       });
     } else {
+      if (!walletAddress) {
+        return res.status(400).json({
+          status: "failed",
+          message: "Please provide wallet address",
+        });
+      }
+      const checkWalletAddress = await PlayersData.findOne({ walletAddress });
+      if (checkWalletAddress) {
+        return res.status(200).json({
+          message: "This wallet Address is used by another user",
+          walletAddress: checkWalletAddress.walletAddress,
+        });
+      }
       const newPlayersData = new PlayersData({
-        userId,
-        walletAddress,
+        userId: userId,
+        walletAddress: walletAddress,
         coinRewarded: false,
         numCoins: 0,
         matchCount: 0,
@@ -38,23 +61,28 @@ exports.SaveWalletAddress = async (req, res) => {
         headShotCount: 0,
         totalHeadshots: 0,
         todayDate: new Date(),
+        rewardDate: new Date(),
       });
-      // console.log(newPlayersData);
       // Save the new game stats document to the database
-      await newPlayersData.save();
+      // await newPlayersData.save();
 
       // Reward the player with 150 coins and set the coinRewarded flag to true on the server
       newPlayersData.numCoins += 150;
       newPlayersData.coinRewarded = true;
+
+      // console.log("newPlayersData", newPlayersData);
+
       await newPlayersData.save();
-      res.status(200).json({
+
+      return res.status(200).json({
         message: "Wallet address saved successfully",
         numCoins: newPlayersData.numCoins,
         coinRewarded: newPlayersData.coinRewarded,
+        walletAddress: walletAddress,
       });
     }
   } catch (err) {
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal Server Error", err: err });
   }
 };
 
@@ -375,5 +403,150 @@ exports.DeleteAllPlayer = async (req, res) => {
     res.status(500).json({
       message: "Internal server error",
     });
+  }
+};
+
+exports.RewardListData = async (req, res) => {
+  try {
+    if (!req.body.userId) {
+      return res.status(404).json({ message: "please provide UserID" });
+    }
+    let data = await PlayersData.findOne({ userId: req.body.userId });
+    let existingRewardDate = moment(data.rewardDate);
+    let dif = moment().diff(existingRewardDate, "hours");
+    console.log(dif);
+    if (dif >= 24) {
+      await PlayersData.updateOne(
+        { userId: req.body.userId },
+        {
+          $set: {
+            totalKillClaimStatus: false,
+            headshotClaimStatus: false,
+            totalTimeClaimStatus: false,
+            rewardDate: new Date(),
+          },
+        }
+      );
+    }
+    let rewardData = await PlayersData.aggregate([
+      {
+        $match: { userId: req.body.userId },
+      },
+      {
+        $facet: {
+          hundredKill: [
+            {
+              $addFields: { taskId: 1, coins: 10, task_name: "hundredKill" },
+            },
+            {
+              $project: {
+                taskId: 1,
+                task_name: 1,
+                _id: 1,
+                userId: 1,
+                walletAddress: 1,
+                totalKillClaimStatus: 1,
+                coins: 1,
+              },
+            },
+          ],
+          twentyFiveHeadShots: [
+            {
+              $addFields: {
+                taskId: 2,
+                coins: 5,
+                task_name: "twentyFiveHeadShots",
+              },
+            },
+            {
+              $project: {
+                taskId: 1,
+                _id: 1,
+                task_name: 1,
+                userId: 1,
+                walletAddress: 1,
+                headshotClaimStatus: 1,
+                coins: 1,
+              },
+            },
+          ],
+          totalSpendTime: [
+            {
+              $addFields: { taskId: 3, coins: 6, task_name: "totalSpendTime" },
+            },
+            {
+              $project: {
+                taskId: 1,
+                _id: 1,
+                userId: 1,
+                walletAddress: 1,
+                totalTimeClaimStatus: 1,
+                coins: 1,
+
+                task_name: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $project: {
+          data: {
+            $concatArrays: [
+              "$hundredKill",
+              "$twentyFiveHeadShots",
+              "$totalSpendTime",
+            ],
+          },
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      data: rewardData[0].data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: "Internal Server Error",
+      err: err,
+    });
+  }
+};
+
+exports.updateRewardStatus = async (req, res) => {
+  try {
+    let { userId, taskId } = req.body;
+    console.log(req.body);
+    if (!userId || !taskId) {
+      return res.status(400).json({
+        status: "failed",
+        message: "Please provide User Id and Task Id",
+      });
+    }
+
+    if (taskId === 1) {
+      await PlayersData.updateOne(
+        { userId: userId },
+        { $set: { headshotClaimStatus: true } }
+      );
+    } else if (taskId === 2) {
+      await PlayersData.updateOne(
+        { userId: userId },
+        { $set: { totalKillClaimStatus: 1 } }
+      );
+    } else {
+      await PlayersData.updateOne(
+        { userId: userId },
+        { $set: { totalTimeClainStatus: 1 } }
+      );
+    }
+    res.status(200).json({
+      status: "success",
+      message: "Reward Status Change Successfully.",
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ status: "failed", message: "Internal Server Error" });
   }
 };
