@@ -436,7 +436,12 @@ exports.RewardListData = async (req, res) => {
         $facet: {
           hundredKill: [
             {
-              $addFields: { taskId: 1, coins: 10, task_name: "hundredKill" },
+              $addFields: {
+                taskId: 1,
+                coins: 10,
+                task_name: "hundredKill",
+                status: "$totalKillClaimStatus",
+              },
             },
             {
               $project: {
@@ -445,7 +450,7 @@ exports.RewardListData = async (req, res) => {
                 _id: 1,
                 userId: 1,
                 walletAddress: 1,
-                totalKillClaimStatus: 1,
+                status: 1,
                 coins: 1,
               },
             },
@@ -456,6 +461,7 @@ exports.RewardListData = async (req, res) => {
                 taskId: 2,
                 coins: 5,
                 task_name: "twentyFiveHeadShots",
+                status: "$headshotClaimStatus",
               },
             },
             {
@@ -465,14 +471,19 @@ exports.RewardListData = async (req, res) => {
                 task_name: 1,
                 userId: 1,
                 walletAddress: 1,
-                headshotClaimStatus: 1,
+                status: 1,
                 coins: 1,
               },
             },
           ],
           totalSpendTime: [
             {
-              $addFields: { taskId: 3, coins: 6, task_name: "totalSpendTime" },
+              $addFields: {
+                taskId: 3,
+                coins: 6,
+                task_name: "totalSpendTime",
+                status: "$totalTimeClaimStatus",
+              },
             },
             {
               $project: {
@@ -480,9 +491,8 @@ exports.RewardListData = async (req, res) => {
                 _id: 1,
                 userId: 1,
                 walletAddress: 1,
-                totalTimeClaimStatus: 1,
                 coins: 1,
-
+                status: 1,
                 task_name: 1,
               },
             },
@@ -527,17 +537,17 @@ exports.updateRewardStatus = async (req, res) => {
     if (taskId === 1) {
       await PlayersData.updateOne(
         { userId: userId },
-        { $set: { headshotClaimStatus: true } }
+        { $set: { totalKillClaimStatus: true } }
       );
     } else if (taskId === 2) {
       await PlayersData.updateOne(
         { userId: userId },
-        { $set: { totalKillClaimStatus: 1 } }
+        { $set: { headshotClaimStatus: 1 } } // headshotClaimStatus
       );
     } else {
       await PlayersData.updateOne(
         { userId: userId },
-        { $set: { totalTimeClainStatus: 1 } }
+        { $set: { totalTimeClaimStatus: 1 } }
       );
     }
     res.status(200).json({
